@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "rest-pg"
+version = "0.1.0"
+description = ""
+authors = ["Mihail Butvin <butvin.mihail@yandex.ru>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.7.1"
+isort = "^5.12.0"
+wemake-python-styleguide = "^0.18.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
