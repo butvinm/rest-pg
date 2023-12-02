@@ -1,4 +1,4 @@
 """Core logic.
 
-That modules contains abstract database operations and data models.
+That modules contains database operations and data models.
 """

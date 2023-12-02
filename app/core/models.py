@@ -13,7 +13,7 @@ class ColumnDef(BaseModel):
     type: str
 
     # Checks, constrains and other stuff that follow after type.
-    embellishment: str | None
+    embellishment: str | None = None
 
 
 class TableDef(BaseModel):
