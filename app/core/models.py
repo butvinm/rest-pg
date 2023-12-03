@@ -33,7 +33,7 @@ class Column(BaseModel):
     type: str
 
     # Checks, constrains and other stuff that follow after type.
-    embellishment: str
+    embellishment: str | None = None
 
 
 class Table(BaseModel):
