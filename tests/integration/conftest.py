@@ -17,14 +17,22 @@ def event_loop() -> Generator[AbstractEventLoop, None, None]:
 
 
 @pytest.fixture(scope='session')
-async def db_conn() -> AsyncGenerator[AsyncConnection[Any], None]:
+async def container() -> AsyncGenerator[PostgresContainer, None]:
     """Create connection with Postgres in test container."""
     with PostgresContainer() as container:
-        async with await AsyncConnection.connect(
-            host=container.get_container_host_ip(),
-            port=container.get_exposed_port(container.port_to_expose),
-            user=container.POSTGRES_USER,
-            password=container.POSTGRES_PASSWORD,
-            dbname=container.POSTGRES_DB,
-        ) as conn:
-            yield conn
+        yield container
+
+
+@pytest.fixture
+async def db_conn(
+    container: PostgresContainer,
+) -> AsyncGenerator[AsyncConnection[Any], None]:
+    """Create connection with Postgres in test container."""
+    async with await AsyncConnection.connect(
+        host=container.get_container_host_ip(),
+        port=container.get_exposed_port(container.port_to_expose),
+        user=container.POSTGRES_USER,
+        password=container.POSTGRES_PASSWORD,
+        dbname=container.POSTGRES_DB,
+    ) as conn:
+        yield conn
