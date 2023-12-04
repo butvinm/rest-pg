@@ -7,9 +7,13 @@ from pydantic import BaseModel
 
 from app.core.models import TableDef
 
+# Constraints
+_NOT_NULL = 'NOT NULL'
+_UNIQUE = 'UNIQUE'
+_PRIMARY_KEY = 'PRIMARY KEY'
+
 # Column definition template.
-_COLUMN_DEF_QUERY = SQL('{name} {type}')
-_COLUMN_DEF_EMBELLISHED_QUERY = SQL('{name} {type} {embellishment}')
+_COLUMN_DEF_QUERY = SQL('{name} {type} {constraints}')
 
 # Template for create table query.
 _TABLE_DEF_QUERY = SQL('CREATE TABLE {table_name} ({column_defs});')
@@ -22,17 +26,20 @@ def create_table_query(
     """Create SQL query for table declaration."""
     column_defs: list[Composed] = []
     for column in table_def.columns:
-        if column.embellishment is not None:
-            column_def = _COLUMN_DEF_EMBELLISHED_QUERY.format(
-                name=Identifier(column.name),
-                type=SQL(column.type),
-                embellishment=SQL(column.embellishment),
-            )
+        constraints: list[str] = []
+        if column.primary_key:
+            constraints.append(_PRIMARY_KEY)
         else:
-            column_def = _COLUMN_DEF_QUERY.format(
-                name=Identifier(column.name),
-                type=SQL(column.type),
-            )
+            if not column.nullable:
+                constraints.append(_NOT_NULL)
+            if column.unique:
+                constraints.append(_UNIQUE)
+
+        column_def = _COLUMN_DEF_QUERY.format(
+            name=Identifier(column.name),
+            type=SQL(column.type),
+            constraints=SQL(' ').join(map(SQL, constraints)),
+        )
         column_defs.append(column_def)
 
     return _TABLE_DEF_QUERY.format(
@@ -117,7 +124,8 @@ def table_columns_query(table_name: str) -> Query:
     return _TABLE_COLUMNS_QUERY.format(table_name=table_name)
 
 
-_INSERT_EMPTY_ROW_QUERY = SQL('INSERT INTO {table_name} DEFAULT VALUES RETURNING *;')
+_INSERT_EMPTY_ROW_QUERY = SQL(
+    'INSERT INTO {table_name} DEFAULT VALUES RETURNING *;')
 
 _INSERT_ROW_QUERY = SQL("""
 INSERT INTO {table_name}

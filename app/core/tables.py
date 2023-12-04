@@ -36,8 +36,8 @@ async def create_table(
 ) -> str | DbError:
     """Create new table in the database."""
     try:
-        async with conn.cursor() as curr:
-            await curr.execute(create_table_query(table_name, table_def))
+        async with conn.transaction():
+            await conn.execute(create_table_query(table_name, table_def))
     except PgError as err:
         return DbError(message=str(err))
 

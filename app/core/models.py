@@ -1,21 +1,46 @@
 """Data models."""
 
-from typing import Any
+from enum import StrEnum
+from typing import Any, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+class ColumnTypes(StrEnum):
+    """Supported columns types."""
+
+    serial = 'serial'
+    integer = 'integer'
+    text = 'text'
+    boolean = 'boolean'
 
 
 class ColumnDef(BaseModel):
     """Data to define new table column."""
 
     # Column name.
-    name: str
+    name: str = Field(min_length=1)
 
     # Column type: any of types, supported by Postgres.
-    type: str
+    type: ColumnTypes
 
-    # Checks, constrains and other stuff that follow after type.
-    embellishment: str | None = None
+    # Set NULL constraint
+    nullable: bool = True
+
+    # Set UNIQUE constraint
+    unique: bool = False
+
+    # Set PRIMARY KEY constraint. Overrides `nullable` and `unique`
+    primary_key: bool = False
+
+    @model_validator(mode='after')
+    def check_primary_key(self) -> Self:
+        """Override `nullable` and `unique` for primary keys."""
+        if self.primary_key:
+            self.nullable = False
+            self.unique = True
+
+        return self
 
 
 class TableDef(BaseModel):
