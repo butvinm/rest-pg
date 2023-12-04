@@ -13,6 +13,7 @@ from app.core.queries import (
     TableQualifiedNameResult,
     TableRowsResult,
     create_table_query,
+    drop_table_query,
     insert_row_query,
     table_columns_query,
     table_qualified_name_query,
@@ -144,3 +145,17 @@ async def insert_rows(
             return DbError(message=str(err))
 
     return inserted
+
+
+async def drop_table(
+    table_name: str,
+    conn: AsyncConnection[Any],
+) -> str | None | DbError:
+    """Drop table entry."""
+    try:
+        async with conn.transaction():
+            await conn.execute(drop_table_query(table_name))
+    except PgError as err:
+        return DbError(message=str(err))
+
+    return table_name

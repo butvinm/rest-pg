@@ -115,3 +115,11 @@ def insert_row_query(
         column_names=SQL(', ').join(map(Identifier, column_names)),
         placeholders=SQL(', ').join(Placeholder() * len(column_names)),
     )
+
+
+_DROP_TABLE_QUERY = SQL('DROP TABLE {table_name}')
+
+
+def drop_table_query(table_name: str) -> Query:
+    """Create drop table query."""
+    return _DROP_TABLE_QUERY.format(table_name=Identifier(table_name))
