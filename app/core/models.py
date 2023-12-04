@@ -1,5 +1,7 @@
 """Data models."""
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -47,3 +49,9 @@ class TableInfo(BaseModel):
 
     # Totals size in bytes
     size: int = Field(ge=0)
+
+
+class TableData(BaseModel):
+    """Unstructured table data."""
+
+    rows: list[dict[str, Any]]
