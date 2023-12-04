@@ -8,7 +8,7 @@ from psycopg.errors import Error as PgError
 from psycopg.rows import class_row, dict_row
 from pydantic import BaseModel
 
-from app.core.models import ColumnInfo, TableDef, TableInfo
+from app.core.models import ColumnInfo, TableData, TableDef, TableInfo
 from app.core.queries import (
     TableQualifiedNameResult,
     TableRowsResult,
@@ -101,7 +101,6 @@ async def _get_table_size(
     return record.size
 
 
-
 async def _get_table_columns(
     table_name: str,
     conn: AsyncConnection[Any],
@@ -151,17 +150,17 @@ async def get_table_info(
 
 async def insert_rows(
     table_name: str,
-    rows: list[dict[str, Any]],
+    table_data: TableData,
     conn: AsyncConnection[Any],
-) -> list[dict[str, Any]] | None | DbError:
+) -> TableData | None | DbError:
     """Insert rows into table."""
-    inserted: list[dict[str, Any]] = []
-    if not rows:
+    inserted = TableData(rows=[])
+    if not table_data.rows:
         return inserted
 
     curr = conn.cursor(row_factory=dict_row)
-    for row in rows:
-        query = insert_row_query(table_name, column_names=list(rows[0]))
+    for row in table_data.rows:
+        query = insert_row_query(table_name, column_names=list(row.keys()))
         try:
             async with conn.transaction():
                 await curr.execute(query, tuple(row.values()))
@@ -169,7 +168,7 @@ async def insert_rows(
                 if inserted_row is None:
                     return DbError(message='Failed to insert row')
 
-                inserted.append(inserted_row)
+                inserted.rows.append(inserted_row)
         except PgError as err:
             return DbError(message=str(err))
 

@@ -6,7 +6,7 @@ from typing import Any
 from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 
-from app.core.models import ColumnDef, TableDef, TableInfo
+from app.core.models import ColumnDef, TableData, TableDef, TableInfo
 from app.core.tables import DbError, create_table, drop_table, get_table_info, insert_rows
 
 
@@ -85,31 +85,34 @@ async def test_insert_rows(db_conn: AsyncConnection[Any]) -> None:
     )
     assert isinstance(table_name, str)
 
-    rows = await insert_rows(table_name, [], db_conn)
-    assert rows == []
+    inserted = await insert_rows(table_name, TableData(rows=[]), db_conn)
+    assert isinstance(inserted, TableData)
+    assert inserted.rows == []
 
-    rows = await insert_rows(
+    inserted = await insert_rows(
         table_name,
-        [
+        TableData(rows=[
             {'col 2': 'test 0'},
             {'col 2': 'test 1'},
-        ],
+        ]),
         db_conn,
     )
-    assert rows == [
+    assert isinstance(inserted, TableData)
+    assert inserted.rows == [
         {'col 1': 1, 'col 2': 'test 0'},
         {'col 1': 2, 'col 2': 'test 1'},
     ]
 
-    rows = await insert_rows(
+    inserted = await insert_rows(
         table_name,
-        [
+        TableData(rows=[
             {'col 1': 3, 'col 2': 'test 0'},
             {'col 1': 4, 'col 2': 'test 1'},
-        ],
+        ]),
         db_conn,
     )
-    assert rows == [
+    assert isinstance(inserted, TableData)
+    assert inserted.rows == [
         {'col 1': 3, 'col 2': 'test 0'},
         {'col 1': 4, 'col 2': 'test 1'},
     ]
@@ -140,7 +143,9 @@ async def test_drop_table(db_conn: AsyncConnection[Any]) -> None:
     async with db_conn.cursor(row_factory=dict_row) as curr:
         await curr.execute("SELECT * FROM pg_class WHERE relkind = 'r';")
         records = await curr.fetchmany()
-        assert dropped_table not in {record.get('relname') for record in records}
+        assert dropped_table not in {
+            record.get('relname') for record in records
+        }
 
     dropped_table = await drop_table(table_name, db_conn)
     assert isinstance(dropped_table, DbError)
