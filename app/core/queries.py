@@ -8,11 +8,11 @@ from pydantic import BaseModel
 from app.core.models import TableDef
 
 # Column definition template.
-COLUMN_DEF = SQL('{name} {type}')
-COLUMN_DEF_EMBELLISHED = SQL('{name} {type} {embellishment}')
+_COLUMN_DEF_QUERY = SQL('{name} {type}')
+_COLUMN_DEF_EMBELLISHED_QUERY = SQL('{name} {type} {embellishment}')
 
 # Template for create table query.
-TABLE_DEF = SQL('CREATE TABLE {table_name} ({column_defs});')
+_TABLE_DEF_QUERY = SQL('CREATE TABLE {table_name} ({column_defs});')
 
 
 def create_table_query(
@@ -23,19 +23,19 @@ def create_table_query(
     column_defs: list[Composed] = []
     for column in table_def.columns:
         if column.embellishment is not None:
-            column_def = COLUMN_DEF_EMBELLISHED.format(
+            column_def = _COLUMN_DEF_EMBELLISHED_QUERY.format(
                 name=Identifier(column.name),
                 type=SQL(column.type),
                 embellishment=SQL(column.embellishment),
             )
         else:
-            column_def = COLUMN_DEF.format(
+            column_def = _COLUMN_DEF_QUERY.format(
                 name=Identifier(column.name),
                 type=SQL(column.type),
             )
         column_defs.append(column_def)
 
-    return TABLE_DEF.format(
+    return _TABLE_DEF_QUERY.format(
         table_name=Identifier(table_name),
         column_defs=SQL(', ').join(column_defs),
     )
@@ -63,7 +63,7 @@ WHERE
 """)
 
 
-def create_table_qualified_name_query(table_name: str) -> Query:
+def table_qualified_name_query(table_name: str) -> Query:
     """Create query that full qualified name of table."""
     return _TABLE_QUALIFIED_NAME_QUERY.format(table_name=table_name)
 
@@ -77,7 +77,7 @@ class TableRowsResult(BaseModel):
 _TABLE_ROWS_QUERY = SQL('SELECT count(*) as rows FROM {table_name}')
 
 
-def create_table_rows_query(table_name: str) -> Query:
+def table_rows_query(table_name: str) -> Query:
     """Create query that get table rows count."""
     return _TABLE_ROWS_QUERY.format(table_name=Identifier(table_name))
 
@@ -92,6 +92,6 @@ WHERE
 """)
 
 
-def create_table_columns_query(table_name: str) -> Query:
+def table_columns_query(table_name: str) -> Query:
     """Create query that get table columns info."""
     return _TABLE_COLUMNS_QUERY.format(table_name=table_name)

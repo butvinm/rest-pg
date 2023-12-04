@@ -12,10 +12,10 @@ from app.core.models import ColumnInfo, TableDef, TableInfo
 from app.core.queries import (
     TableQualifiedNameResult,
     TableRowsResult,
-    create_table_columns_query,
-    create_table_qualified_name_query,
+    table_columns_query,
+    table_qualified_name_query,
     create_table_query,
-    create_table_rows_query,
+    table_rows_query,
 )
 
 
@@ -48,7 +48,7 @@ async def _get_table_qualified_name(
         async with conn.cursor(
             row_factory=class_row(TableQualifiedNameResult),
         ) as curr:
-            await curr.execute(create_table_qualified_name_query(table_name))
+            await curr.execute(table_qualified_name_query(table_name))
             record = await curr.fetchone()
     except PgError as err:
         return DbError(message=str(err))
@@ -67,7 +67,7 @@ async def _get_table_rows(
         async with conn.cursor(
             row_factory=class_row(TableRowsResult),
         ) as curr:
-            await curr.execute(create_table_rows_query(table_name))
+            await curr.execute(table_rows_query(table_name))
             record = await curr.fetchone()
     except PgError as err:
         return DbError(message=str(err))
@@ -86,7 +86,7 @@ async def _get_table_columns(
         async with conn.cursor(
             row_factory=class_row(ColumnInfo),
         ) as curr:
-            await curr.execute(create_table_columns_query(table_name))
+            await curr.execute(table_columns_query(table_name))
             return await curr.fetchall()
     except PgError as err:
         return DbError(message=str(err))
