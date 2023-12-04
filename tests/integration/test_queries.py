@@ -41,3 +41,8 @@ RETURNING *;
 """
     assert isinstance(query, Composed)
     assert query.as_string(db_conn) == expected
+
+    query = insert_row_query('My Table', [])
+    expected = 'INSERT INTO "My Table" DEFAULT VALUES RETURNING *;'
+    assert isinstance(query, Composed)
+    assert query.as_string(db_conn) == expected

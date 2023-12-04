@@ -117,6 +117,8 @@ def table_columns_query(table_name: str) -> Query:
     return _TABLE_COLUMNS_QUERY.format(table_name=table_name)
 
 
+_INSERT_EMPTY_ROW_QUERY = SQL('INSERT INTO {table_name} DEFAULT VALUES RETURNING *;')
+
 _INSERT_ROW_QUERY = SQL("""
 INSERT INTO {table_name}
 ({column_names})
@@ -130,6 +132,11 @@ def insert_row_query(
     column_names: list[str],
 ) -> Query:
     """Create insert query."""
+    if not column_names:
+        return _INSERT_EMPTY_ROW_QUERY.format(
+            table_name=Identifier(table_name),
+        )
+
     return _INSERT_ROW_QUERY.format(
         table_name=Identifier(table_name),
         column_names=SQL(', ').join(map(Identifier, column_names)),
