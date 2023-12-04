@@ -7,7 +7,7 @@ from psycopg import AsyncConnection
 from psycopg.sql import Composed
 
 from app.core.models import ColumnDef, TableDef
-from app.core.queries import create_table_query
+from app.core.queries import create_table_query, insert_row_query
 
 
 async def test_create_table_query(db_conn: AsyncConnection[Any]) -> None:
@@ -26,5 +26,18 @@ async def test_create_table_query(db_conn: AsyncConnection[Any]) -> None:
         ),
     )
     expected = 'CREATE TABLE "My Table" ("col 1" serial PRIMARY KEY, "col 2" text);'
+    assert isinstance(query, Composed)
+    assert query.as_string(db_conn) == expected
+
+
+async def test_insert_row_query(db_conn: AsyncConnection[Any]) -> None:
+    """Test `insert_row_query` function."""
+    query = insert_row_query('My Table', ['col 1', 'col 2'])
+    expected = """
+INSERT INTO "My Table"
+("col 1", "col 2")
+VALUES (%s, %s)
+RETURNING *;
+"""
     assert isinstance(query, Composed)
     assert query.as_string(db_conn) == expected

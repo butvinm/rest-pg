@@ -2,7 +2,7 @@
 
 
 from psycopg.abc import Query
-from psycopg.sql import SQL, Composed, Identifier
+from psycopg.sql import SQL, Composed, Identifier, Placeholder
 from pydantic import BaseModel
 
 from app.core.models import TableDef
@@ -95,3 +95,23 @@ WHERE
 def table_columns_query(table_name: str) -> Query:
     """Create query that get table columns info."""
     return _TABLE_COLUMNS_QUERY.format(table_name=table_name)
+
+
+_INSERT_ROW_QUERY = SQL("""
+INSERT INTO {table_name}
+({column_names})
+VALUES ({placeholders})
+RETURNING *;
+""")
+
+
+def insert_row_query(
+    table_name: str,
+    column_names: list[str],
+) -> Query:
+    """Create insert query."""
+    return _INSERT_ROW_QUERY.format(
+        table_name=Identifier(table_name),
+        column_names=SQL(', ').join(map(Identifier, column_names)),
+        placeholders=SQL(', ').join(Placeholder() * len(column_names)),
+    )
