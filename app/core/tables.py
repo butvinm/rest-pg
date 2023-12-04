@@ -12,12 +12,14 @@ from app.core.models import ColumnInfo, TableDef, TableInfo
 from app.core.queries import (
     TableQualifiedNameResult,
     TableRowsResult,
+    TableSizeResult,
     create_table_query,
     drop_table_query,
     insert_row_query,
     table_columns_query,
     table_qualified_name_query,
     table_rows_query,
+    table_size_query,
 )
 
 
@@ -80,6 +82,26 @@ async def _get_table_rows(
     return record.rows
 
 
+async def _get_table_size(
+    table_name: str,
+    conn: AsyncConnection[Any],
+) -> int | None | DbError:
+    try:
+        async with conn.cursor(
+            row_factory=class_row(TableSizeResult),
+        ) as curr:
+            await curr.execute(table_size_query(table_name))
+            record = await curr.fetchone()
+    except PgError as err:
+        return DbError(message=str(err))
+
+    if record is None:
+        return None
+
+    return record.size
+
+
+
 async def _get_table_columns(
     table_name: str,
     conn: AsyncConnection[Any],
@@ -109,6 +131,12 @@ async def get_table_info(
     elif isinstance(rows, DbError):
         return rows
 
+    size = await _get_table_size(table_name, conn)
+    if size is None:
+        return DbError(message='Failed to get rows count')
+    elif isinstance(size, DbError):
+        return size
+
     columns = await _get_table_columns(table_name, conn)
     if isinstance(columns, DbError):
         return columns
@@ -117,6 +145,7 @@ async def get_table_info(
         qualified_name=qualified_name,
         columns=columns,
         rows=rows,
+        size=size,
     )
 
 

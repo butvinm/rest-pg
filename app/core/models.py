@@ -44,3 +44,6 @@ class TableInfo(BaseModel):
 
     # Rows count
     rows: int = Field(ge=0)
+
+    # Totals size in bytes
+    size: int = Field(ge=0)

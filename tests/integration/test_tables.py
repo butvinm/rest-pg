@@ -169,3 +169,6 @@ async def test_get_table_info(db_conn: AsyncConnection[Any]) -> None:
     assert isinstance(table_info, TableInfo)
 
     assert table_info.qualified_name == 'test.public."My Table 2"'
+    assert table_info.columns
+    assert table_info.rows == 0
+    assert table_info.size > 0

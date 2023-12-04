@@ -82,6 +82,26 @@ def table_rows_query(table_name: str) -> Query:
     return _TABLE_ROWS_QUERY.format(table_name=Identifier(table_name))
 
 
+class TableSizeResult(BaseModel):
+    """Result of table size query."""
+
+    size: int
+
+
+_TABLE_SIZE_QUERY = SQL("""
+SELECT
+    pg_total_relation_size(quote_ident(table_name)) as size
+FROM
+    information_schema.tables
+WHERE table_name = {table_name};
+""")
+
+
+def table_size_query(table_name: str) -> Query:
+    """Create query that get table size in bytes."""
+    return _TABLE_SIZE_QUERY.format(table_name=table_name)
+
+
 _TABLE_COLUMNS_QUERY = SQL("""
 SELECT
     column_name as name, data_type as type
