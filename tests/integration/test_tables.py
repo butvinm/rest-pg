@@ -7,7 +7,7 @@ from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 
 from app.core.models import ColumnDef, TableDef, TableInfo
-from app.core.tables import DbError, create_table, get_table_info
+from app.core.tables import DbError, create_table, get_table_info, insert_rows
 
 
 async def test_create_table(db_conn: AsyncConnection[Any]) -> None:
@@ -64,6 +64,55 @@ async def test_create_table(db_conn: AsyncConnection[Any]) -> None:
         db_conn,
     )
     assert isinstance(result, DbError)
+
+
+async def test_insert_rows(db_conn: AsyncConnection[Any]) -> None:
+    """Test `insert_rows` function."""
+    # Create test table
+    table_name = await create_table(
+        'My Table',
+        TableDef(
+            columns=[
+                ColumnDef(
+                    name='col 1',
+                    type='serial',
+                    embellishment='PRIMARY KEY',
+                ),
+                ColumnDef(name='col 2', type='text'),
+            ],
+        ),
+        db_conn,
+    )
+    assert isinstance(table_name, str)
+
+    rows = await insert_rows(table_name, [], db_conn)
+    assert rows == []
+
+    rows = await insert_rows(
+        table_name,
+        [
+            {'col 2': 'test 0'},
+            {'col 2': 'test 1'},
+        ],
+        db_conn,
+    )
+    assert rows == [
+        {'col 1': 1, 'col 2': 'test 0'},
+        {'col 1': 2, 'col 2': 'test 1'},
+    ]
+
+    rows = await insert_rows(
+        table_name,
+        [
+            {'col 1': 3, 'col 2': 'test 0'},
+            {'col 1': 4, 'col 2': 'test 1'},
+        ],
+        db_conn,
+    )
+    assert rows == [
+        {'col 1': 3, 'col 2': 'test 0'},
+        {'col 1': 4, 'col 2': 'test 1'},
+    ]
 
 
 async def test_get_table_info(db_conn: AsyncConnection[Any]) -> None:

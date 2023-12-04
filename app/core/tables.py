@@ -5,16 +5,17 @@ from typing import Any
 
 from psycopg import AsyncConnection
 from psycopg.errors import Error as PgError
-from psycopg.rows import class_row
+from psycopg.rows import class_row, dict_row
 from pydantic import BaseModel
 
 from app.core.models import ColumnInfo, TableDef, TableInfo
 from app.core.queries import (
     TableQualifiedNameResult,
     TableRowsResult,
+    create_table_query,
+    insert_row_query,
     table_columns_query,
     table_qualified_name_query,
-    create_table_query,
     table_rows_query,
 )
 
@@ -116,3 +117,30 @@ async def get_table_info(
         columns=columns,
         rows=rows,
     )
+
+
+async def insert_rows(
+    table_name: str,
+    rows: list[dict[str, Any]],
+    conn: AsyncConnection[Any],
+) -> list[dict[str, Any]] | None | DbError:
+    """Insert rows into table."""
+    inserted: list[dict[str, Any]] = []
+    if not rows:
+        return inserted
+
+    curr = conn.cursor(row_factory=dict_row)
+    for row in rows:
+        query = insert_row_query(table_name, column_names=list(rows[0]))
+        try:
+            async with conn.transaction():
+                await curr.execute(query, tuple(row.values()))
+                inserted_row = await curr.fetchone()
+                if inserted_row is None:
+                    return DbError(message='Failed to insert row')
+
+                inserted.append(inserted_row)
+        except PgError as err:
+            return DbError(message=str(err))
+
+    return inserted
