@@ -109,7 +109,7 @@ async def test_insert_rows(
 
 @pytest.mark.parametrize(('table_name', 'expected_type'), (
     (TEST_TABLE_NAME, str),
-    ('Unexisted', DbError),
+    ('Unexisted', None),
 ))
 async def test_drop_table(
     table_name: str,

@@ -10,16 +10,13 @@ from pydantic import BaseModel
 
 from app.core.models import ColumnInfo, TableData, TableDef, TableInfo
 from app.core.queries import (
-    TableQualifiedNameResult,
-    TableRowsResult,
-    TableSizeResult,
+    TableInfoResult,
     create_table_query,
     drop_table_query,
     insert_row_query,
     table_columns_query,
-    table_qualified_name_query,
-    table_rows_query,
-    table_size_query,
+    table_exist_query,
+    table_info_query,
 )
 
 
@@ -29,12 +26,34 @@ class DbError(BaseModel):
     message: str
 
 
+async def is_table_exist(
+    table_name: str,
+    conn: AsyncConnection[Any],
+) -> bool | DbError:
+    """Check that table exists in the database."""
+    try:
+        async with conn.transaction():
+            curr = await conn.execute(table_exist_query(table_name))
+            result: tuple[bool] | None = await curr.fetchone()
+            if result is None:
+                return False
+
+            return result[0]
+    except PgError as err:
+        return DbError(message=str(err))
+
+
 async def create_table(
     table_name: str,
     table_def: TableDef,
     conn: AsyncConnection[Any],
-) -> str | DbError:
+) -> str | None | DbError:
     """Create new table in the database."""
+    table_exists = await is_table_exist(table_name, conn)
+    if table_exists:
+        return None
+    elif isinstance(table_exists, DbError):
+        return table_exists
     try:
         async with conn.transaction():
             await conn.execute(create_table_query(table_name, table_def))
@@ -44,61 +63,25 @@ async def create_table(
     return table_name
 
 
-async def _get_table_qualified_name(
+async def _get_table_info(
     table_name: str,
     conn: AsyncConnection[Any],
-) -> str | None | DbError:
+) -> TableInfoResult | None | DbError:
+    table_exists = await is_table_exist(table_name, conn)
+    if not table_exists:
+        return None
+    elif isinstance(table_exists, DbError):
+        return table_exists
+
+    curr = conn.cursor(row_factory=class_row(TableInfoResult))
     try:
-        async with conn.cursor(
-            row_factory=class_row(TableQualifiedNameResult),
-        ) as curr:
-            await curr.execute(table_qualified_name_query(table_name))
-            record = await curr.fetchone()
+        async with conn.transaction():
+            await curr.execute(table_info_query(table_name))
+            table_info_result = await curr.fetchone()
     except PgError as err:
         return DbError(message=str(err))
 
-    if record is None:
-        return None
-
-    return record.qualified_name
-
-
-async def _get_table_rows(
-    table_name: str,
-    conn: AsyncConnection[Any],
-) -> int | None | DbError:
-    try:
-        async with conn.cursor(
-            row_factory=class_row(TableRowsResult),
-        ) as curr:
-            await curr.execute(table_rows_query(table_name))
-            record = await curr.fetchone()
-    except PgError as err:
-        return DbError(message=str(err))
-
-    if record is None:
-        return None
-
-    return record.rows
-
-
-async def _get_table_size(
-    table_name: str,
-    conn: AsyncConnection[Any],
-) -> int | None | DbError:
-    try:
-        async with conn.cursor(
-            row_factory=class_row(TableSizeResult),
-        ) as curr:
-            await curr.execute(table_size_query(table_name))
-            record = await curr.fetchone()
-    except PgError as err:
-        return DbError(message=str(err))
-
-    if record is None:
-        return None
-
-    return record.size
+    return table_info_result
 
 
 async def _get_table_columns(
@@ -120,31 +103,19 @@ async def get_table_info(
     conn: AsyncConnection[Any],
 ) -> TableInfo | None | DbError:
     """Get table info from system catalog."""
-    qualified_name = await _get_table_qualified_name(table_name, conn)
-    if qualified_name is None or isinstance(qualified_name, DbError):
-        return qualified_name
-
-    rows = await _get_table_rows(table_name, conn)
-    if rows is None:
-        return DbError(message='Failed to get rows count')
-    elif isinstance(rows, DbError):
-        return rows
-
-    size = await _get_table_size(table_name, conn)
-    if size is None:
-        return DbError(message='Failed to get rows count')
-    elif isinstance(size, DbError):
-        return size
+    table_info = await _get_table_info(table_name, conn)
+    if table_info is None or isinstance(table_info, DbError):
+        return table_info
 
     columns = await _get_table_columns(table_name, conn)
     if isinstance(columns, DbError):
         return columns
 
     return TableInfo(
-        qualified_name=qualified_name,
+        qualified_name=table_info.qualified_name,
         columns=columns,
-        rows=rows,
-        size=size,
+        rows=table_info.rows,
+        size=table_info.size,
     )
 
 
@@ -154,6 +125,12 @@ async def insert_rows(
     conn: AsyncConnection[Any],
 ) -> TableData | None | DbError:
     """Insert rows into table."""
+    table_exists = await is_table_exist(table_name, conn)
+    if not table_exists:
+        return None
+    elif isinstance(table_exists, DbError):
+        return table_exists
+
     inserted = TableData(rows=[])
     if not table_data.rows:
         return inserted
@@ -180,6 +157,12 @@ async def drop_table(
     conn: AsyncConnection[Any],
 ) -> str | None | DbError:
     """Drop table entry."""
+    table_exists = await is_table_exist(table_name, conn)
+    if not table_exists:
+        return None
+    elif isinstance(table_exists, DbError):
+        return table_exists
+
     try:
         async with conn.transaction():
             await conn.execute(drop_table_query(table_name))

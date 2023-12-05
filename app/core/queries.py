@@ -7,6 +7,20 @@ from pydantic import BaseModel
 
 from app.core.models import TableDef
 
+_TABLE_EXIST_QUERY = SQL("""
+SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_name = {table_name}
+);
+""")
+
+
+def table_exist_query(table_name: str) -> Query:
+    """Create SQL query for table declaration."""
+    return _TABLE_EXIST_QUERY.format(table_name=table_name)
+
+
 # Constraints
 _NOT_NULL = 'NOT NULL'
 _UNIQUE = 'UNIQUE'
@@ -48,65 +62,40 @@ def create_table_query(
     )
 
 
-class TableQualifiedNameResult(BaseModel):
-    """Result of table qualified name query."""
+class TableInfoResult(BaseModel):
+    """Table metanfo."""
 
     qualified_name: str
 
+    rows: int
 
-_TABLE_QUALIFIED_NAME_QUERY = SQL("""
+    size: int
+
+
+_TABLE_INFO_QUERY = SQL("""
 SELECT
     quote_ident(table_catalog)
     || '.'
     || quote_ident(table_schema)
     || '.'
     || quote_ident(table_name)
-    as qualified_name
+    as qualified_name,
+    (SELECT count(*) FROM {table_name}) as rows,
+    pg_total_relation_size(quote_ident(table_name)) as size
 FROM
     information_schema.tables
 WHERE
-    table_name = {table_name}
+    table_name = {table_name_str}
     AND table_type = 'BASE TABLE';
 """)
 
 
-def table_qualified_name_query(table_name: str) -> Query:
-    """Create query that full qualified name of table."""
-    return _TABLE_QUALIFIED_NAME_QUERY.format(table_name=table_name)
-
-
-class TableRowsResult(BaseModel):
-    """Result of table rows query."""
-
-    rows: int
-
-
-_TABLE_ROWS_QUERY = SQL('SELECT count(*) as rows FROM {table_name}')
-
-
-def table_rows_query(table_name: str) -> Query:
-    """Create query that get table rows count."""
-    return _TABLE_ROWS_QUERY.format(table_name=Identifier(table_name))
-
-
-class TableSizeResult(BaseModel):
-    """Result of table size query."""
-
-    size: int
-
-
-_TABLE_SIZE_QUERY = SQL("""
-SELECT
-    pg_total_relation_size(quote_ident(table_name)) as size
-FROM
-    information_schema.tables
-WHERE table_name = {table_name};
-""")
-
-
-def table_size_query(table_name: str) -> Query:
-    """Create query that get table size in bytes."""
-    return _TABLE_SIZE_QUERY.format(table_name=table_name)
+def table_info_query(table_name: str) -> Query:
+    """Create query that retrieves information about a table."""
+    return _TABLE_INFO_QUERY.format(
+        table_name=Identifier(table_name),
+        table_name_str=table_name,
+    )
 
 
 _TABLE_COLUMNS_QUERY = SQL("""
