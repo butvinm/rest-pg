@@ -7,7 +7,7 @@ from fastapi.routing import APIRouter
 from psycopg import AsyncConnection
 
 from app.api_v1.dependencies import db_connection
-from app.api_v1.errors import PgError, TableNotFound
+from app.api_v1.errors import PgError, TableExists, TableNotFound
 from app.core.models import TableData, TableDef, TableInfo
 from app.core.tables import (
     DbError,
@@ -36,6 +36,8 @@ async def create_table_handler(
 ) -> str:
     """Create new table in the database."""
     created = await create_table(table_name, table_def, conn)
+    if created is None:
+        raise TableExists(table_name)
     if isinstance(created, DbError):
         raise PgError(created.message)
 
